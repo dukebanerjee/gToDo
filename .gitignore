@@ -2,6 +2,7 @@ app/.classpath
 app/.project
 app/bin
 app/gen
+app/libs/gtodo-core.jar
 core/.classpath
 core/.project
 *~
