@@ -1,3 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project name="GToDo" default="help">
+<project name="GToDo" default="compile">
+	<target name="compile">
+		<mkdir dir="build/classes"/>
+		<javac srcdir="src" destdir="build/classes">
+		</javac>
+		<jar destfile="../app/libs/gtodo-core.jar" basedir="build/classes" />
+	</target>
 </project>
