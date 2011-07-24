@@ -4,3 +4,5 @@ app/bin
 app/gen
 core/.classpath
 core/.project
+*~
+*.swp
