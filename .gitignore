@@ -4,6 +4,9 @@ app/.settings
 app/bin
 app/gen
 app/libs/gtodo-core.jar
+app-test/.classpath
+app-test/.project
+app-test/bin
 core/.classpath
 core/.project
 core/build
