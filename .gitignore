@@ -1,9 +1,12 @@
 app/.classpath
 app/.project
+app/.settings
 app/bin
 app/gen
 app/libs/gtodo-core.jar
 core/.classpath
 core/.project
+core/build
+core/bin
 *~
 *.swp
