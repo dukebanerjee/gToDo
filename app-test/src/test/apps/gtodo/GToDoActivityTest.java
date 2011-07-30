@@ -1,4 +1,4 @@
-package test.apps;
+package test.apps.gtodo;
 
 import android.test.ActivityInstrumentationTestCase2;
 

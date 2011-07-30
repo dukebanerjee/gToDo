@@ -1,5 +1,6 @@
-package test.apps;
+package test.apps.gtodo;
 
+import test.apps.gtodo.R;
 import android.app.Activity;
 import android.os.Bundle;
 
