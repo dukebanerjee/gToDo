@@ -1,12 +1,9 @@
 package test.apps.gtodo.service;
 
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 import org.apache.http.HttpResponse;
 import org.apache.http.NameValuePair;
@@ -16,8 +13,14 @@ import org.apache.http.client.methods.HttpPost;
 import org.apache.http.cookie.Cookie;
 import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.message.BasicNameValuePair;
+import org.cyberneko.html.parsers.DOMParser;
 import org.junit.Before;
 import org.junit.Test;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.NodeList;
+import org.xml.sax.InputSource;
+
 import static org.junit.Assert.*;
 
 public class TasksServiceTest {
@@ -81,56 +84,51 @@ public class TasksServiceTest {
 	}
 	
 	private String readAuthToken() throws IOException {
-		HttpResponse response = client.execute(new HttpGet(TasksService.INITIAL_SERVICE_URL));
-		assertEquals(200, response.getStatusLine().getStatusCode());
-		Pattern openTag = Pattern.compile("<(/?[A-Za-z]+)");
-		Pattern attr = Pattern.compile("/?>|([A-Za-z]+) *= *[\"']?([\\S&&[^\"']]+)[\"']?");
-		Matcher m = openTag.matcher(HttpClientUtils.readEntityAsString(response.getEntity()));
-		HttpPost loginRequest = null;
-		List<NameValuePair> formValues = null;
-		while(m.find()) {
-			String tag = m.group(1);
-			Map<String, String> attributes = new HashMap<String, String>();
-			m.usePattern(attr);
-			while(m.find() && !m.group(0).endsWith(">")) {
-				attributes.put(m.group(1), m.group(2));
-			}
-			if("form".equalsIgnoreCase(tag) && "gaia_loginform".equals(attributes.get("id"))) {
-				loginRequest = new HttpPost(attributes.get("action"));
-				formValues = new ArrayList<NameValuePair>();
-			}
-			else if(formValues != null && "input".equalsIgnoreCase(tag)) {
-				if("hidden".equals(attributes.get("type"))) {
-					formValues.add(new BasicNameValuePair(attributes.get("name"), attributes.get("value")));
+		try {
+			HttpResponse response = client.execute(new HttpGet(TasksService.INITIAL_SERVICE_URL));
+			assertEquals(200, response.getStatusLine().getStatusCode());
+			
+			DOMParser parser = new DOMParser();
+			parser.parse(new InputSource(new InputStreamReader(response.getEntity().getContent())));
+			Document doc = parser.getDocument();
+			Element form = doc.getElementById("gaia_loginform");
+			assertNotNull("Expecting login form", form);
+			
+			List<NameValuePair> formValues = new ArrayList<NameValuePair>();
+			NodeList formInputs = form.getElementsByTagName("input");
+			for(int i = 0; i < formInputs.getLength(); i++) {
+				Element formInput = (Element) formInputs.item(i);
+				if("hidden".equals(formInput.getAttribute("type"))) {
+					formValues.add(new BasicNameValuePair(formInput.getAttribute("name"), formInput.getAttribute("value")));
 				}
 			}
-			else if(formValues != null && "/form".equalsIgnoreCase(tag)) {
-				String username = System.getProperty("tasks.service.username");
-				String password = System.getProperty("tasks.service.password");
-				if(username == null || password == null) {
-					throw new IllegalStateException("tasks.service.username and tasks.service.password need to provided as system properties");
-				}
-				
-				formValues.add(new BasicNameValuePair("Email", username));
-				formValues.add(new BasicNameValuePair("Passwd", password));
-				formValues.add(new BasicNameValuePair("PersistentCookie", "yes"));
-				loginRequest.setEntity(new UrlEncodedFormEntity(formValues));
-				response = client.execute(loginRequest);
+			
+			String username = System.getProperty("tasks.service.username");
+			String password = System.getProperty("tasks.service.password");
+			if(username == null || password == null) {
+				throw new IllegalStateException("tasks.service.username and tasks.service.password need to provided as system properties");
+			}
+			formValues.add(new BasicNameValuePair("Email", username));
+			formValues.add(new BasicNameValuePair("Passwd", password));
+			formValues.add(new BasicNameValuePair("PersistentCookie", "yes"));
+			
+			HttpPost loginRequest = new HttpPost(form.getAttribute("action"));
+			loginRequest.setEntity(new UrlEncodedFormEntity(formValues));
+			response = client.execute(loginRequest);
+			response.getEntity().getContent().close();
+			if(response.getStatusLine().getStatusCode() == 302) {
+				response = client.execute(new HttpGet(response.getHeaders("Location")[0].getValue()));
 				response.getEntity().getContent().close();
-				if(response.getStatusLine().getStatusCode() == 302) {
-					response = client.execute(new HttpGet(response.getHeaders("Location")[0].getValue()));
-					response.getEntity().getContent().close();
-				}
-				assertEquals(200, response.getStatusLine().getStatusCode());
-				for(Cookie cookie : client.getCookieStore().getCookies()) {
-					if("GTL".equals(cookie.getName())) {
-						return cookie.getValue();
-					}
-				}
-				break;
 			}
-			m.usePattern(openTag);
+			assertEquals(200, response.getStatusLine().getStatusCode());
+			for(Cookie cookie : client.getCookieStore().getCookies()) {
+				if("GTL".equals(cookie.getName())) {
+					return cookie.getValue();
+				}
+			}
+			throw new IllegalStateException("Could not read authentication token from response");
+		} catch (Exception e) {
+			throw new IOException(e);
 		}
-		throw new IllegalStateException("Could not read authentication token from response");
 	}
 }
