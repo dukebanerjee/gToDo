@@ -2,27 +2,39 @@ package test.apps.gtodo.service;
 
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.apache.http.HttpResponse;
 import org.apache.http.client.HttpClient;
+import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.HttpGet;
+import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.protocol.ClientContext;
 import org.apache.http.impl.client.BasicCookieStore;
 import org.apache.http.impl.cookie.BasicClientCookie;
+import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.protocol.BasicHttpContext;
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 public class TasksService {
 	public static final String INITIAL_SERVICE_URL = "https://mail.google.com/tasks/ig";
+	private static final String SERVICE_URL = "https://mail.google.com/tasks/r/ig";
+	
 	private final HttpClient client;
 	private BasicHttpContext context;
+	private long clientVersion;
+	private long latestSyncPoint;
+	private String currentListId;
+	private int actionId;
 
 	public TasksService(HttpClient client, String authToken) {
 		this.client = client;
 		context = new BasicHttpContext();
+		actionId = 1;
 		
 		BasicCookieStore cookieStore = new BasicCookieStore();
 		context.setAttribute(ClientContext.COOKIE_STORE, cookieStore);
@@ -48,11 +60,50 @@ public class TasksService {
 		Matcher m = Pattern.compile("_setup\\((.*)\\)").matcher(responseContent);
 		if(m.find()) {
 			try {
-				return new InitialConnectionResult(new JSONObject(m.group(1)));
+				InitialConnectionResult result = new InitialConnectionResult(new JSONObject(m.group(1)));
+				clientVersion = result.getClientVersion();
+				latestSyncPoint = result.getLatestSyncPoint();
+				currentListId = result.getDefaultListId();
+				return result;
 			} catch (JSONException e) {
 				// Fall through
 			}
 		}
 		throw new IOException("Unexpected response from service: " + responseContent);
+	}
+	
+	public ServiceResult getTaskLists() throws IOException {
+		JSONObject request;
+		try {
+			request = new JSONObject().put("action_type", "get_all")
+                                      .put("action_id", actionId++)
+ 									  .put("list_id", currentListId)
+									  .put("get_deleted", Boolean.FALSE);
+			return new ServiceResult(executeRequest(request));
+		} catch (JSONException e) {
+			throw new IllegalStateException("Not possible");
+		}
+	}
+	
+	private JSONObject executeRequest(JSONObject... requests) throws IOException {
+		HttpPost serviceRequest = new HttpPost(SERVICE_URL);
+		JSONObject jsonRequest = null;
+		try {
+			serviceRequest.addHeader("AT", "1");
+			jsonRequest = new JSONObject().put("action_list", new JSONArray(Arrays.asList(requests)))
+ 										  .put("client_version", clientVersion)
+ 										  .put("latest_sync_point", latestSyncPoint)
+			                              .put("current_list_id", currentListId);
+		} catch (JSONException e) {
+			throw new IllegalStateException("Not possible");
+		}
+		
+		try {
+			serviceRequest.setEntity(new UrlEncodedFormEntity(Arrays.asList(new BasicNameValuePair("r", jsonRequest.toString()))));
+			HttpResponse httpResponse = client.execute(serviceRequest, context);
+			return new JSONObject(HttpClientUtils.readEntityAsString(httpResponse.getEntity()));
+		} catch (JSONException e) {
+			throw new IOException("Unexpected response from service");
+		}
 	}
 }

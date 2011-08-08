@@ -57,4 +57,12 @@ public class InitialConnectionResult {
 			throw new UnexpectedResponseException(e);
 		}
 	}
+
+	public String getDefaultListId() {
+		try {
+			return response.getJSONObject("t").getJSONObject("user").getString("default_list_id");
+		} catch (JSONException e) {
+			throw new UnexpectedResponseException(e);
+		}
+	}
 }

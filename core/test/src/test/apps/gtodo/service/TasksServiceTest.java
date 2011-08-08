@@ -60,6 +60,24 @@ public class TasksServiceTest {
 			}
 		}
 		assertTrue(foundDefaultEmptyTask);
+		
+		assertTrue(result.getDefaultListId().length() > 0);
+	}
+	
+	@Test
+	public void testAllLists() throws IOException {
+		tasksService.connect();
+		ServiceResult result = tasksService.getTaskLists();
+
+		assertTrue(result.getTaskListCount() > 0);
+		boolean foundDefaultTaskList = false;
+		for(int i = 0; i < result.getTaskListCount(); i++) {
+			if("Default List".equals(result.getTaskList(i).getName())) {
+				foundDefaultTaskList = true;
+				break;
+			}
+		}
+		assertTrue(foundDefaultTaskList);
 	}
 	
 	private String readAuthToken() throws IOException {
