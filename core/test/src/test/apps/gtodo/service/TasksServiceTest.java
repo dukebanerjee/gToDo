@@ -24,6 +24,9 @@ import org.xml.sax.InputSource;
 import static org.junit.Assert.*;
 
 public class TasksServiceTest {
+	private static final int HTTP_OK = 200;
+	private static final int HTTP_REDIRECT = 302;
+	
 	private TasksService tasksService;
 	private DefaultHttpClient client;
 
@@ -86,7 +89,7 @@ public class TasksServiceTest {
 	private String readAuthToken() throws IOException {
 		try {
 			HttpResponse response = client.execute(new HttpGet(TasksService.INITIAL_SERVICE_URL));
-			assertEquals(200, response.getStatusLine().getStatusCode());
+			assertEquals(HTTP_OK, response.getStatusLine().getStatusCode());
 			
 			DOMParser parser = new DOMParser();
 			parser.parse(new InputSource(new InputStreamReader(response.getEntity().getContent())));
@@ -116,11 +119,12 @@ public class TasksServiceTest {
 			loginRequest.setEntity(new UrlEncodedFormEntity(formValues));
 			response = client.execute(loginRequest);
 			response.getEntity().getContent().close();
-			if(response.getStatusLine().getStatusCode() == 302) {
+			if(response.getStatusLine().getStatusCode() == HTTP_REDIRECT) {
 				response = client.execute(new HttpGet(response.getHeaders("Location")[0].getValue()));
 				response.getEntity().getContent().close();
 			}
-			assertEquals(200, response.getStatusLine().getStatusCode());
+			assertEquals(HTTP_OK, response.getStatusLine().getStatusCode());
+			
 			for(Cookie cookie : client.getCookieStore().getCookies()) {
 				if("GTL".equals(cookie.getName())) {
 					return cookie.getValue();
