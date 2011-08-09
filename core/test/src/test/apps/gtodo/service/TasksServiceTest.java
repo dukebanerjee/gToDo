@@ -45,8 +45,7 @@ public class TasksServiceTest {
     public void testInitialConnection() throws IOException {
         InitialConnectionResult result = tasksService.connect();
 
-        // The following are needed for subsequent communication with the web
-        // service
+        // The following are needed for subsequent communication with the web service
         assertTrue(result.getClientVersion() > 0);
         assertTrue(result.getLatestSyncPoint() > 0);
 
@@ -59,8 +58,7 @@ public class TasksServiceTest {
     @Test
     public void testRefresh() throws IOException {
         InitialConnectionResult initialResult = tasksService.connect();
-        ServiceResult result = tasksService.refresh(initialResult
-                .getDefaultListId());
+        ServiceResult result = tasksService.refresh(initialResult.getDefaultListId());
 
         assertHasTaskList(result, "Default List", true);
         assertExpectedEmptyTaskResult(result);
@@ -77,15 +75,13 @@ public class TasksServiceTest {
         ServiceResult result;
 
         // Add the task list and verify that we got a new id
-        result = tasksService.addTaskList(taskList,
-                initialResult.getTaskListCount());
+        result = tasksService.addTaskList(taskList, initialResult.getTaskListCount());
         assertEquals(1, result.getResultCount());
         assertTrue(result.getResult(0) instanceof NewEntityResult);
         assertTrue(((NewEntityResult) result.getResult(0)).getNewId().length() > 0);
 
         // Refresh and verify that the task is in the list of new ids
-        String expectedTaskId = ((NewEntityResult) result.getResult(0))
-                .getNewId();
+        String expectedTaskId = ((NewEntityResult) result.getResult(0)).getNewId();
         result = tasksService.refresh(initialResult.getDefaultListId());
         assertHasTaskListWithId(result, expectedTaskId, true);
 
@@ -107,8 +103,7 @@ public class TasksServiceTest {
         assertHasTaskListWithId(result, expectedTaskId, false);
     }
 
-    private void assertHasTaskList(TaskListsResult result,
-            String expectedTaskList, boolean expected) {
+    private void assertHasTaskList(TaskListsResult result, String expectedTaskList, boolean expected) {
         assertTrue(result.getTaskListCount() > 0);
         boolean foundDefaultTaskList = false;
         for (int i = 0; i < result.getTaskListCount(); i++) {
@@ -120,8 +115,7 @@ public class TasksServiceTest {
         assertEquals(expected, foundDefaultTaskList);
     }
 
-    private void assertHasTaskListWithId(TaskListsResult result,
-            String expectedId, boolean expected) {
+    private void assertHasTaskListWithId(TaskListsResult result, String expectedId, boolean expected) {
         assertTrue(result.getTaskListCount() > 0);
         boolean foundTaskListWithId = false;
         for (int i = 0; i < result.getTaskListCount(); i++) {
@@ -134,10 +128,8 @@ public class TasksServiceTest {
     }
 
     private void assertExpectedEmptyTaskResult(TasksResult result) {
-        // This is possibly a not-always-valid assertion. The Google Tasks web
-        // client always creates a task with
-        // a blank name in new lists, there should be at least one item.
-        // However, this is not enforced by the server.
+        // This is possibly a not-always-valid assertion. The Google Tasks web client always creates a task with
+        // a blank name in new lists, there should be at least one item. However, this is not enforced by the server.
         assertTrue(result.getTaskCount() > 0);
         boolean foundDefaultEmptyTask = false;
         for (int i = 0; i < result.getTaskCount(); i++) {
@@ -152,13 +144,11 @@ public class TasksServiceTest {
     private static String readAuthToken() throws IOException {
         try {
             DefaultHttpClient client = new DefaultHttpClient();
-            HttpResponse response = client.execute(new HttpGet(
-                    TasksService.INITIAL_SERVICE_URL));
+            HttpResponse response = client.execute(new HttpGet(TasksService.INITIAL_SERVICE_URL));
             assertEquals(HTTP_OK, response.getStatusLine().getStatusCode());
 
             DOMParser parser = new DOMParser();
-            parser.parse(new InputSource(new InputStreamReader(response
-                    .getEntity().getContent())));
+            parser.parse(new InputSource(new InputStreamReader(response.getEntity().getContent())));
             Document doc = parser.getDocument();
             Element form = doc.getElementById("gaia_loginform");
             assertNotNull("Expecting login form", form);
@@ -168,9 +158,9 @@ public class TasksServiceTest {
             for (int i = 0; i < formInputs.getLength(); i++) {
                 Element formInput = (Element) formInputs.item(i);
                 if ("hidden".equals(formInput.getAttribute("type"))) {
-                    formValues.add(new BasicNameValuePair(formInput
-                            .getAttribute("name"), formInput
-                            .getAttribute("value")));
+                    formValues.add(new BasicNameValuePair(
+                            formInput.getAttribute("name"), 
+                            formInput.getAttribute("value")));
                 }
             }
 
@@ -189,8 +179,7 @@ public class TasksServiceTest {
             response = client.execute(loginRequest);
             response.getEntity().getContent().close();
             if (response.getStatusLine().getStatusCode() == HTTP_REDIRECT) {
-                response = client.execute(new HttpGet(response
-                        .getHeaders("Location")[0].getValue()));
+                response = client.execute(new HttpGet(response.getHeaders("Location")[0].getValue()));
                 response.getEntity().getContent().close();
             }
             assertEquals(HTTP_OK, response.getStatusLine().getStatusCode());
@@ -200,8 +189,7 @@ public class TasksServiceTest {
                     return cookie.getValue();
                 }
             }
-            throw new IllegalStateException(
-                    "Could not read authentication token from response");
+            throw new IllegalStateException("Could not read authentication token from response");
         } catch (Exception e) {
             throw new IOException(e);
         }
