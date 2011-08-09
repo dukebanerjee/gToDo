@@ -103,42 +103,57 @@ public class TasksServiceTest {
         assertHasTaskListWithId(result, expectedTaskId, false);
     }
 
-    private void assertHasTaskList(TaskListsResult result, String expectedTaskList, boolean expected) {
-        assertTrue(result.getTaskListCount() > 0);
-        boolean foundDefaultTaskList = false;
-        for (int i = 0; i < result.getTaskListCount(); i++) {
-            if (expectedTaskList.equals(result.getTaskList(i).getName())) {
-                foundDefaultTaskList = true;
-                break;
+    private void assertHasTaskList(final TaskListsResult result, String expectedTaskList, boolean expected) {
+        assertFoundInList(expectedTaskList, expected, new ListAccessor() {
+            public Object getListValue(int i) {
+                return result.getTaskList(i).getName();
             }
-        }
-        assertEquals(expected, foundDefaultTaskList);
+            
+            public int getCount() {
+                return result.getTaskListCount();
+            }
+        });
     }
 
-    private void assertHasTaskListWithId(TaskListsResult result, String expectedId, boolean expected) {
-        assertTrue(result.getTaskListCount() > 0);
-        boolean foundTaskListWithId = false;
-        for (int i = 0; i < result.getTaskListCount(); i++) {
-            if (expectedId.equals(result.getTaskList(i).getId())) {
-                foundTaskListWithId = true;
-                break;
+    private void assertHasTaskListWithId(final TaskListsResult result, String expectedId, boolean expected) {
+        assertFoundInList(expectedId, expected, new ListAccessor() {
+            public Object getListValue(int i) {
+                return result.getTaskList(i).getId();
             }
-        }
-        assertEquals(expected, foundTaskListWithId);
+            
+            public int getCount() {
+                return result.getTaskListCount();
+            }
+        });
     }
 
-    private void assertExpectedEmptyTaskResult(TasksResult result) {
-        // This is possibly a not-always-valid assertion. The Google Tasks web client always creates a task with
-        // a blank name in new lists, there should be at least one item. However, this is not enforced by the server.
-        assertTrue(result.getTaskCount() > 0);
-        boolean foundDefaultEmptyTask = false;
-        for (int i = 0; i < result.getTaskCount(); i++) {
-            if ("".equals(result.getTask(i).getName())) {
-                foundDefaultEmptyTask = true;
+    private void assertExpectedEmptyTaskResult(final TasksResult result) {
+        assertFoundInList("", true, new ListAccessor() {
+            public Object getListValue(int i) {
+                return result.getTask(i).getName();
+            }
+            
+            public int getCount() {
+                return result.getTaskCount();
+            }
+        });
+    }
+    
+    private void assertFoundInList(Object value, boolean expectedToBeFound, ListAccessor listAccessor) {
+        assertTrue(listAccessor.getCount() > 0);
+        boolean foundValue = false;
+        for (int i = 0; i < listAccessor.getCount(); i++) {
+            if (value.equals(listAccessor.getListValue(i))) {
+                foundValue = true;
                 break;
             }
         }
-        assertTrue(foundDefaultEmptyTask);
+        assertEquals(expectedToBeFound, foundValue);
+    }
+    
+    private interface ListAccessor {
+        public int getCount();
+        public Object getListValue(int i);
     }
 
     private static String readAuthToken() throws IOException {
