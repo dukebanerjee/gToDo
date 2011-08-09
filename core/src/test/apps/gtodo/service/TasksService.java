@@ -2,6 +2,7 @@ package test.apps.gtodo.service;
 
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.Collection;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -112,7 +113,7 @@ public class TasksService {
         }
     }
 
-    public ServiceResult deleteTaskList(String id) throws IOException {
+    public ServiceResult deleteObject(String id) throws IOException {
         try {
             JSONObject request = new JSONObject()
                 .put("action_type", "update")
@@ -121,6 +122,25 @@ public class TasksService {
                 .put("entity_delta", new JSONObject()
                     .put("deleted", true));
             return new ServiceResult(executeRequest(null, request));
+        } catch (JSONException e) {
+            throw new IllegalStateException("Not possible");
+        }
+    }
+    
+    public ServiceResult addTask(String listId, String taskName, int index, String priorSiblingId) throws IOException {
+        try {
+            JSONObject request = new JSONObject()
+                .put("action_type", "create")
+                .put("action_id", actionId++)
+                .put("index", index)
+                .put("entity_delta", new JSONObject()
+                    .put("name", taskName)
+                    .put("entity_type", "TASK"))
+                .put("parent_id", listId)
+                .put("dest_parent_type", "GROUP")
+                .put("list_id", listId)
+                .put("prior_sibling_id", priorSiblingId);
+            return new ServiceResult(executeRequest(listId, request));
         } catch (JSONException e) {
             throw new IllegalStateException("Not possible");
         }

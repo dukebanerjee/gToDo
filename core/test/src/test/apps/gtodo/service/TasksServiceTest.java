@@ -51,7 +51,7 @@ public class TasksServiceTest {
 
         // The following are needed for initial population of the UI
         assertHasTaskList(result, "Default List", true);
-        assertExpectedEmptyTaskResult(result);
+        assertHasTaskWithName(result, "", true);
         assertTrue(result.getDefaultListId().length() > 0);
     }
 
@@ -61,7 +61,7 @@ public class TasksServiceTest {
         ServiceResult result = tasksService.refresh(initialResult.getDefaultListId());
 
         assertHasTaskList(result, "Default List", true);
-        assertExpectedEmptyTaskResult(result);
+        assertHasTaskWithName(result, "", true);
     }
 
     @Test
@@ -80,7 +80,7 @@ public class TasksServiceTest {
         assertTrue(result.getResult(0) instanceof NewEntityResult);
         assertTrue(((NewEntityResult) result.getResult(0)).getNewId().length() > 0);
 
-        // Refresh and verify that the task is in the list of new ids
+        // Refresh and verify that the new id is in the list of task list ids
         String expectedTaskId = ((NewEntityResult) result.getResult(0)).getNewId();
         result = tasksService.refresh(initialResult.getDefaultListId());
         assertHasTaskListWithId(result, expectedTaskId, true);
@@ -96,13 +96,44 @@ public class TasksServiceTest {
         assertHasTaskList(result, renamedTaskList, true);
 
         // Finally, delete the list
-        tasksService.deleteTaskList(expectedTaskId);
+        tasksService.deleteObject(expectedTaskId);
 
         // Refresh and verify that the list is gone
         result = tasksService.refresh(initialResult.getDefaultListId());
         assertHasTaskListWithId(result, expectedTaskId, false);
     }
 
+    @Test
+    public void testTaskOperations() throws IOException {
+        String taskName = "Test Task " + System.currentTimeMillis();
+
+        // Make sure the new task does not already exist
+        InitialConnectionResult initialResult = tasksService.connect();
+        assertHasTaskList(initialResult, taskName, false);
+
+        ServiceResult result;
+
+        // Add the task and verify that we got a new id
+        int index = initialResult.getTaskCount();
+        String priorSiblingId = initialResult.getTask(index - 1).getId();
+        result = tasksService.addTask(initialResult.getDefaultListId(), taskName, 0, priorSiblingId);
+        assertEquals(1, result.getResultCount());
+        assertTrue(result.getResult(0) instanceof NewEntityResult);
+        assertTrue(((NewEntityResult) result.getResult(0)).getNewId().length() > 0);
+
+        // Refresh and verify that the new id is in the list of task ids
+        String expectedTaskId = ((NewEntityResult) result.getResult(0)).getNewId();
+        result = tasksService.refresh(initialResult.getDefaultListId());
+        assertHasTaskWithId(result, expectedTaskId, true);
+
+        // Finally, delete the task
+        tasksService.deleteObject(expectedTaskId);
+
+        // Refresh and verify that the task is gone
+        result = tasksService.refresh(initialResult.getDefaultListId());
+        assertHasTaskWithId(result, expectedTaskId, false);
+    }
+    
     private void assertHasTaskList(final TaskListsResult result, String expectedTaskList, boolean expected) {
         assertFoundInList(expectedTaskList, expected, new ListAccessor() {
             public Object getListValue(int i) {
@@ -127,8 +158,20 @@ public class TasksServiceTest {
         });
     }
 
-    private void assertExpectedEmptyTaskResult(final TasksResult result) {
-        assertFoundInList("", true, new ListAccessor() {
+    private void assertHasTaskWithId(final TasksResult result, String expectedId, boolean expected) {
+        assertFoundInList(expectedId, expected, new ListAccessor() {
+            public Object getListValue(int i) {
+                return result.getTask(i).getId();
+            }
+            
+            public int getCount() {
+                return result.getTaskCount();
+            }
+        });
+    }
+
+    private void assertHasTaskWithName(final TasksResult result, String expectedName, boolean expected) {
+        assertFoundInList(expectedName, expected, new ListAccessor() {
             public Object getListValue(int i) {
                 return result.getTask(i).getName();
             }

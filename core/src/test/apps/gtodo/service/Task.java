@@ -10,6 +10,14 @@ public class Task {
         this.encoding = encoding;
     }
 
+    public String getId() {
+        try {
+            return encoding.getString("id");
+        } catch (JSONException e) {
+            throw new UnexpectedResponseException(e);
+        }
+    }
+
     public String getName() {
         try {
             return encoding.getString("name");
@@ -17,4 +25,5 @@ public class Task {
             throw new UnexpectedResponseException(e);
         }
     }
+
 }
