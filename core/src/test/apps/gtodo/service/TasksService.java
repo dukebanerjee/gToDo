@@ -71,13 +71,52 @@ public class TasksService {
 	}
 	
 	public ServiceResult refresh(String listId) throws IOException {
-		JSONObject request;
 		try {
-			request = new JSONObject().put("action_type", "get_all")
-                                      .put("action_id", actionId++)
- 									  .put("list_id", listId)
-									  .put("get_deleted", Boolean.FALSE);
-			return new ServiceResult(executeRequest(listId, request));
+			JSONObject request = new JSONObject().put("action_type", "get_all")
+			                          			 .put("action_id", actionId++)
+   											     .put("list_id", listId)
+												 .put("get_deleted", Boolean.FALSE);
+			return new ServiceResult(executeRequest(null, request));
+		} catch (JSONException e) {
+			throw new IllegalStateException("Not possible");
+		}
+	}
+	
+	public ServiceResult addTaskList(String taskList, int index) throws IOException {
+		try {
+			JSONObject request = new JSONObject().put("action_type", "create")
+			                          			 .put("action_id", actionId++)
+			                          			 .put("index", index)
+												 .put("entity_delta", new JSONObject()
+														 .put("name", taskList)
+														 .put("entity_type", "GROUP"));
+			return new ServiceResult(executeRequest(null, request));
+		} catch (JSONException e) {
+			throw new IllegalStateException("Not possible");
+		}
+	}
+	
+	public ServiceResult renameTaskList(String id, String name) throws IOException {
+		try {
+			JSONObject request = new JSONObject().put("action_type", "update")
+			                          			 .put("action_id", actionId++)
+			                          			 .put("id", id)
+												 .put("entity_delta", new JSONObject()
+														 .put("name", name));
+			return new ServiceResult(executeRequest(null, request));
+		} catch (JSONException e) {
+			throw new IllegalStateException("Not possible");
+		}
+	}
+	
+	public ServiceResult deleteTaskList(String id) throws IOException {
+		try {
+			JSONObject request = new JSONObject().put("action_type", "update")
+			                          			 .put("action_id", actionId++)
+			                          			 .put("id", id)
+												 .put("entity_delta", new JSONObject()
+														 .put("deleted", true));
+			return new ServiceResult(executeRequest(null, request));
 		} catch (JSONException e) {
 			throw new IllegalStateException("Not possible");
 		}

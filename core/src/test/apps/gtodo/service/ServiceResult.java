@@ -41,4 +41,24 @@ public class ServiceResult implements TaskListsResult, TasksResult {
 			throw new UnexpectedResponseException(e);
 		}
 	}
+
+	public int getResultCount() {
+		try {
+			return response.getJSONArray("results").length();
+		} catch (JSONException e) {
+			throw new UnexpectedResponseException(e);
+		}
+	}
+
+	public Result getResult(int i) {
+		try {
+			JSONObject result = response.getJSONArray("results").getJSONObject(i);
+			if("new_entity".equals(result.getString("result_type"))) {
+				return new NewEntityResult(result);
+			}
+			throw new UnexpectedResponseException();
+		} catch (JSONException e) {
+			throw new UnexpectedResponseException(e);
+		}
+	}
 }

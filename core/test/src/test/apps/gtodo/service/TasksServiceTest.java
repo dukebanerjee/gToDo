@@ -50,7 +50,7 @@ public class TasksServiceTest {
 		assertTrue(result.getLatestSyncPoint() > 0);
 		
 		// The following are needed for initial population of the UI
-		assertDefaultTaskListResult(result);
+		assertHasTaskList(result, "Default List", true);
 		assertExpectedEmptyTaskResult(result);
 		assertTrue(result.getDefaultListId().length() > 0);
 	}
@@ -60,20 +60,71 @@ public class TasksServiceTest {
 		InitialConnectionResult initialResult = tasksService.connect();
 		ServiceResult result = tasksService.refresh(initialResult.getDefaultListId());
 		
-		assertDefaultTaskListResult(result);
+		assertHasTaskList(result, "Default List", true);
 		assertExpectedEmptyTaskResult(result);
 	}
-
-	private void assertDefaultTaskListResult(TaskListsResult result) {
+	
+	@Test
+	public void testListOperations() throws IOException {
+		String taskList = "Test List " + System.currentTimeMillis(); 
+		
+		// Make sure the new task list does not already exist
+		InitialConnectionResult initialResult = tasksService.connect();
+		assertHasTaskList(initialResult, taskList, false);
+		
+		ServiceResult result;
+		
+		// Add the task list and verify that we got a new id
+		result = tasksService.addTaskList(taskList, initialResult.getTaskListCount());
+		assertEquals(1, result.getResultCount());
+		assertTrue(result.getResult(0) instanceof NewEntityResult);
+		assertTrue(((NewEntityResult) result.getResult(0)).getNewId().length() > 0);
+		
+		// Refresh and verify that the task is in the list of new ids
+		String expectedTaskId = ((NewEntityResult) result.getResult(0)).getNewId();
+		result = tasksService.refresh(initialResult.getDefaultListId());
+		assertHasTaskListWithId(result, expectedTaskId, true);
+		
+		// Rename the list
+		String renamedTaskList = "Test List " + System.currentTimeMillis();
+		assertNotSame(taskList, renamedTaskList);
+		tasksService.renameTaskList(expectedTaskId, renamedTaskList);
+		
+		// Refresh and verify that the old name is out and the new name is in
+		result = tasksService.refresh(initialResult.getDefaultListId());
+		assertHasTaskList(result, taskList, false);
+		assertHasTaskList(result, renamedTaskList, true);
+		
+		// Finally, delete the list
+		tasksService.deleteTaskList(expectedTaskId);
+		
+		// Refresh and verify that the list is gone
+		result = tasksService.refresh(initialResult.getDefaultListId());
+		assertHasTaskListWithId(result, expectedTaskId, false);
+	}
+	
+	private void assertHasTaskList(TaskListsResult result, String expectedTaskList, boolean expected) {
 		assertTrue(result.getTaskListCount() > 0);
 		boolean foundDefaultTaskList = false;
 		for(int i = 0; i < result.getTaskListCount(); i++) {
-			if("Default List".equals(result.getTaskList(i).getName())) {
+			if(expectedTaskList.equals(result.getTaskList(i).getName())) {
 				foundDefaultTaskList = true;
 				break;
 			}
 		}
-		assertTrue(foundDefaultTaskList);
+		assertEquals(expected, foundDefaultTaskList);
+	}
+	
+	private void assertHasTaskListWithId(TaskListsResult result, String expectedId, boolean expected) {
+		assertTrue(result.getTaskListCount() > 0);
+		boolean foundTaskListWithId = false;
+		for(int i = 0; i < result.getTaskListCount(); i++) {
+			if(expectedId.equals(result.getTaskList(i).getId())) {
+				foundTaskListWithId = true;
+				break;
+			}
+		}
+		assertEquals(expected, foundTaskListWithId);
 	}
 	
 	private void assertExpectedEmptyTaskResult(TasksResult result) {
