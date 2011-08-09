@@ -15,6 +15,7 @@ import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.message.BasicNameValuePair;
 import org.cyberneko.html.parsers.DOMParser;
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Test;
 import org.w3c.dom.Document;
 import org.w3c.dom.Element;
@@ -28,12 +29,16 @@ public class TasksServiceTest {
 	private static final int HTTP_REDIRECT = 302;
 	
 	private TasksService tasksService;
-	private DefaultHttpClient client;
+	private static String authToken;
 
+	@BeforeClass
+	public static void suiteSetup() throws IOException {
+		authToken = readAuthToken();
+	}
+	
 	@Before
 	public void setup() throws IOException {
-		client = new DefaultHttpClient();
-		tasksService = new TasksService(client, readAuthToken());
+		tasksService = new TasksService(new DefaultHttpClient(), authToken);
 	}
 	
 	@Test
@@ -45,6 +50,21 @@ public class TasksServiceTest {
 		assertTrue(result.getLatestSyncPoint() > 0);
 		
 		// The following are needed for initial population of the UI
+		assertDefaultTaskListResult(result);
+		assertExpectedEmptyTaskResult(result);
+		assertTrue(result.getDefaultListId().length() > 0);
+	}
+
+	@Test
+	public void testRefresh() throws IOException {
+		InitialConnectionResult initialResult = tasksService.connect();
+		ServiceResult result = tasksService.refresh(initialResult.getDefaultListId());
+		
+		assertDefaultTaskListResult(result);
+		assertExpectedEmptyTaskResult(result);
+	}
+
+	private void assertDefaultTaskListResult(TaskListsResult result) {
 		assertTrue(result.getTaskListCount() > 0);
 		boolean foundDefaultTaskList = false;
 		for(int i = 0; i < result.getTaskListCount(); i++) {
@@ -54,40 +74,25 @@ public class TasksServiceTest {
 			}
 		}
 		assertTrue(foundDefaultTaskList);
-		
+	}
+	
+	private void assertExpectedEmptyTaskResult(TasksResult result) {
 		// This is possibly a not-always-valid assertion. The Google Tasks web client always creates a task with 
 		// a blank name in new lists, there should be at least one item. However, this is not enforced by the server.
-		assertTrue(result.getDefaultListTaskCount() > 0);
+		assertTrue(result.getTaskCount() > 0);
 		boolean foundDefaultEmptyTask = false;
-		for(int i = 0; i < result.getDefaultListTaskCount(); i++) {
+		for(int i = 0; i < result.getTaskCount(); i++) {
 			if("".equals(result.getTask(i).getName())) {
 				foundDefaultEmptyTask = true;
 				break;
 			}
 		}
 		assertTrue(foundDefaultEmptyTask);
-		
-		assertTrue(result.getDefaultListId().length() > 0);
 	}
 	
-	@Test
-	public void testAllLists() throws IOException {
-		tasksService.connect();
-		ServiceResult result = tasksService.getTaskLists();
-
-		assertTrue(result.getTaskListCount() > 0);
-		boolean foundDefaultTaskList = false;
-		for(int i = 0; i < result.getTaskListCount(); i++) {
-			if("Default List".equals(result.getTaskList(i).getName())) {
-				foundDefaultTaskList = true;
-				break;
-			}
-		}
-		assertTrue(foundDefaultTaskList);
-	}
-	
-	private String readAuthToken() throws IOException {
+	private static String readAuthToken() throws IOException {
 		try {
+			DefaultHttpClient client = new DefaultHttpClient();
 			HttpResponse response = client.execute(new HttpGet(TasksService.INITIAL_SERVICE_URL));
 			assertEquals(HTTP_OK, response.getStatusLine().getStatusCode());
 			

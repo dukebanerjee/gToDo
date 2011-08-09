@@ -3,7 +3,7 @@ package test.apps.gtodo.service;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-public class InitialConnectionResult {
+public class InitialConnectionResult implements TaskListsResult, TasksResult {
 	public final JSONObject response;
 	
 	public InitialConnectionResult(JSONObject response) {
@@ -42,7 +42,7 @@ public class InitialConnectionResult {
 		}
 	}
 
-	public int getDefaultListTaskCount() {
+	public int getTaskCount() {
 		try {
 			return response.getJSONObject("t").getJSONArray("tasks").length();
 		} catch (JSONException e) {

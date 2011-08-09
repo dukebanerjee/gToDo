@@ -28,7 +28,6 @@ public class TasksService {
 	private BasicHttpContext context;
 	private long clientVersion;
 	private long latestSyncPoint;
-	private String currentListId;
 	private int actionId;
 
 	public TasksService(HttpClient client, String authToken) {
@@ -63,7 +62,6 @@ public class TasksService {
 				InitialConnectionResult result = new InitialConnectionResult(new JSONObject(m.group(1)));
 				clientVersion = result.getClientVersion();
 				latestSyncPoint = result.getLatestSyncPoint();
-				currentListId = result.getDefaultListId();
 				return result;
 			} catch (JSONException e) {
 				// Fall through
@@ -72,20 +70,20 @@ public class TasksService {
 		throw new IOException("Unexpected response from service: " + responseContent);
 	}
 	
-	public ServiceResult getTaskLists() throws IOException {
+	public ServiceResult refresh(String listId) throws IOException {
 		JSONObject request;
 		try {
 			request = new JSONObject().put("action_type", "get_all")
                                       .put("action_id", actionId++)
- 									  .put("list_id", currentListId)
+ 									  .put("list_id", listId)
 									  .put("get_deleted", Boolean.FALSE);
-			return new ServiceResult(executeRequest(request));
+			return new ServiceResult(executeRequest(listId, request));
 		} catch (JSONException e) {
 			throw new IllegalStateException("Not possible");
 		}
 	}
 	
-	private JSONObject executeRequest(JSONObject... requests) throws IOException {
+	private JSONObject executeRequest(String currentListId, JSONObject... requests) throws IOException {
 		HttpPost serviceRequest = new HttpPost(SERVICE_URL);
 		JSONObject jsonRequest = null;
 		try {
