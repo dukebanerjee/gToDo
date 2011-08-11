@@ -128,36 +128,38 @@ public class TasksServiceTest {
         result = tasksService.refresh(initialResult.getDefaultListId());
         assertHasTaskWithId(result, expectedTaskId, true);
 
-        Task task = getTaskWithIdFromResult(result, expectedTaskId);
+        TaskResult taskResult = getTaskWithIdFromResult(result, expectedTaskId);
 
         // Verify initial values
-        assertEquals(false, task.getCompleted());
-        assertNull(task.getDueDate());
-        assertEquals("", task.getNotes());
+        assertEquals(false, taskResult.getCompleted());
+        assertNull(taskResult.getDueDate());
+        assertEquals("", taskResult.getNotes());
         
         // Update the task
-        task.setName(taskName + "_New");
-        task.setCompleted(true);
-        task.setDueDate(new GregorianCalendar(2011, Calendar.AUGUST, 8).getTime());
-        task.setNotes("A Note");
-        tasksService.updateTask(initialResult.getDefaultListId(), task);
+        TaskRequest taskRequest = new TaskRequest();
+        taskRequest.setName(taskName + "_New");
+        taskRequest.setCompleted(true);
+        taskRequest.setDueDate(new GregorianCalendar(2011, Calendar.AUGUST, 8).getTime());
+        taskRequest.setNotes("A Note");
+        tasksService.updateTask(initialResult.getDefaultListId(), expectedTaskId, taskRequest);
         
         // Verify updates to task
         result = tasksService.refresh(initialResult.getDefaultListId());
-        task = getTaskWithIdFromResult(result, expectedTaskId);
-        assertEquals(taskName + "_New", task.getName());
-        assertEquals(true, task.getCompleted());
-        assertEquals(new GregorianCalendar(2011, Calendar.AUGUST, 8).getTime(), task.getDueDate());
-        assertEquals("A Note", task.getNotes());
+        taskResult = getTaskWithIdFromResult(result, expectedTaskId);
+        assertEquals(taskName + "_New", taskResult.getName());
+        assertEquals(true, taskResult.getCompleted());
+        assertEquals(new GregorianCalendar(2011, Calendar.AUGUST, 8).getTime(), taskResult.getDueDate());
+        assertEquals("A Note", taskResult.getNotes());
         
         // Reset the due date
-        task.setDueDate(null);
-        tasksService.updateTask(initialResult.getDefaultListId(), task);
+        taskRequest = new TaskRequest();
+        taskRequest.setDueDate(null);
+        tasksService.updateTask(initialResult.getDefaultListId(), expectedTaskId, taskRequest);
         
         // Verify no due date
         result = tasksService.refresh(initialResult.getDefaultListId());
-        task = getTaskWithIdFromResult(result, expectedTaskId);
-        assertNull(task.getDueDate());
+        taskResult = getTaskWithIdFromResult(result, expectedTaskId);
+        assertNull(taskResult.getDueDate());
 
         // Finally, delete the task
         tasksService.deleteObject(expectedTaskId);
@@ -167,8 +169,8 @@ public class TasksServiceTest {
         assertHasTaskWithId(result, expectedTaskId, false);
     }
 
-    private Task getTaskWithIdFromResult(ServiceResult result, String id) {
-        Task task = null;
+    private TaskResult getTaskWithIdFromResult(ServiceResult result, String id) {
+        TaskResult task = null;
         for(int i = 0; i < result.getTaskCount(); i++) {
             task = result.getTask(i);
             if(task.getId().equals(id)) {

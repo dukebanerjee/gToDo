@@ -34,9 +34,9 @@ public class ServiceResult implements TaskListsResult, TasksResult {
         }
     }
 
-    public Task getTask(int i) {
+    public TaskResult getTask(int i) {
         try {
-            return new Task(response.getJSONArray("tasks").getJSONObject(i));
+            return new TaskResult(response.getJSONArray("tasks").getJSONObject(i));
         } catch (JSONException e) {
             throw new UnexpectedResponseException(e);
         }

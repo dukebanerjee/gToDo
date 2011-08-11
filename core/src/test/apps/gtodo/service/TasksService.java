@@ -2,7 +2,6 @@ package test.apps.gtodo.service;
 
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Collection;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -146,12 +145,12 @@ public class TasksService {
         }
     }
     
-    public ServiceResult updateTask(String listId, Task task) throws IOException {
+    public ServiceResult updateTask(String listId, String taskId, TaskRequest task) throws IOException {
         try {
             JSONObject request = new JSONObject()
                 .put("action_type", "update")
                 .put("action_id", actionId++)
-                .put("id", task.getId())
+                .put("id", taskId)
                 .put("entity_delta", task.entityDelta);
             return new ServiceResult(executeRequest(listId, request));
         } catch (JSONException e) {
