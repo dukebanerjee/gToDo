@@ -79,11 +79,11 @@ public class TasksServiceTest {
         // Add the task list and verify that we got a new id
         result = tasksService.addTaskList(taskList, initialResult.getTaskListCount());
         assertEquals(1, result.getResultCount());
-        assertTrue(result.getResult(0) instanceof NewEntityResult);
-        assertTrue(((NewEntityResult) result.getResult(0)).getNewId().length() > 0);
+        assertTrue(result.getResult(0).isNewEntity());
+        assertTrue(result.getResult(0).getNewId().length() > 0);
 
         // Refresh and verify that the new id is in the list of task list ids
-        String expectedTaskId = ((NewEntityResult) result.getResult(0)).getNewId();
+        String expectedTaskId = result.getResult(0).getNewId();
         result = tasksService.refresh(initialResult.getDefaultListId());
         assertHasTaskListWithId(result, expectedTaskId, true);
 
@@ -120,11 +120,11 @@ public class TasksServiceTest {
         String priorSiblingId = initialResult.getTask(index - 1).getId();
         result = tasksService.addTask(initialResult.getDefaultListId(), taskName, 0, priorSiblingId);
         assertEquals(1, result.getResultCount());
-        assertTrue(result.getResult(0) instanceof NewEntityResult);
-        assertTrue(((NewEntityResult) result.getResult(0)).getNewId().length() > 0);
+        assertTrue(result.getResult(0).isNewEntity());
+        assertTrue(result.getResult(0).getNewId().length() > 0);
 
         // Refresh and verify that the new id is in the list of task ids
-        String expectedTaskId = ((NewEntityResult) result.getResult(0)).getNewId();
+        String expectedTaskId = result.getResult(0).getNewId();
         result = tasksService.refresh(initialResult.getDefaultListId());
         assertHasTaskWithId(result, expectedTaskId, true);
 
@@ -163,10 +163,42 @@ public class TasksServiceTest {
 
         // Finally, delete the task
         tasksService.deleteObject(expectedTaskId);
-
+        
         // Refresh and verify that the task is gone
         result = tasksService.refresh(initialResult.getDefaultListId());
         assertHasTaskWithId(result, expectedTaskId, false);
+    }
+    
+    @Test
+    public void testMoveTask() throws IOException {
+        InitialConnectionResult initialResult = tasksService.connect();
+        
+        ServiceResult result;
+
+        // Create new task in the default list
+        String task = "Test Task  " + System.currentTimeMillis();
+        result = tasksService.addTask(initialResult.getDefaultListId(), task, 0, null);
+        String taskId = result.getResult(0).getNewId();
+
+        // Create new task list to move the new task to
+        String taskList = "Test List " + System.currentTimeMillis();
+        result = tasksService.addTaskList(taskList, initialResult.getTaskListCount());
+        String taskListId = result.getResult(0).getNewId();
+
+        // Move the task
+        tasksService.moveTask(taskId, initialResult.getDefaultListId(), taskListId);
+        
+        // Should no longer be in the default list
+        result = tasksService.refresh(initialResult.getDefaultListId());
+        assertHasTaskWithId(result, taskId, false);
+        
+        // Should now be in the new task list
+        result = tasksService.refresh(taskListId);
+        assertHasTaskWithId(result, taskId, true);
+        
+        // Remove the new task and list
+        tasksService.deleteObject(taskId);
+        tasksService.deleteObject(taskListId);
     }
 
     private TaskResult getTaskWithIdFromResult(ServiceResult result, String id) {

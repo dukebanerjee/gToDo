@@ -50,13 +50,10 @@ public class ServiceResult implements TaskListsResult, TasksResult {
         }
     }
 
-    public Result getResult(int i) {
+    public RequestResult getResult(int i) {
         try {
             JSONObject result = response.getJSONArray("results").getJSONObject(i);
-            if ("new_entity".equals(result.getString("result_type"))) {
-                return new NewEntityResult(result);
-            }
-            throw new UnexpectedResponseException();
+            return new RequestResult(result);
         } catch (JSONException e) {
             throw new UnexpectedResponseException(e);
         }
