@@ -3,6 +3,8 @@ package test.apps.gtodo.service;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
+import java.util.Calendar;
+import java.util.GregorianCalendar;
 import java.util.List;
 
 import org.apache.http.HttpResponse;
@@ -126,12 +128,54 @@ public class TasksServiceTest {
         result = tasksService.refresh(initialResult.getDefaultListId());
         assertHasTaskWithId(result, expectedTaskId, true);
 
+        Task task = getTaskWithIdFromResult(result, expectedTaskId);
+
+        // Verify initial values
+        assertEquals(false, task.getCompleted());
+        assertNull(task.getDueDate());
+        assertEquals("", task.getNotes());
+        
+        // Update the task
+        task.setName(taskName + "_New");
+        task.setCompleted(true);
+        task.setDueDate(new GregorianCalendar(2011, Calendar.AUGUST, 8).getTime());
+        task.setNotes("A Note");
+        tasksService.updateTask(initialResult.getDefaultListId(), task);
+        
+        // Verify updates to task
+        result = tasksService.refresh(initialResult.getDefaultListId());
+        task = getTaskWithIdFromResult(result, expectedTaskId);
+        assertEquals(taskName + "_New", task.getName());
+        assertEquals(true, task.getCompleted());
+        assertEquals(new GregorianCalendar(2011, Calendar.AUGUST, 8).getTime(), task.getDueDate());
+        assertEquals("A Note", task.getNotes());
+        
+        // Reset the due date
+        task.setDueDate(null);
+        tasksService.updateTask(initialResult.getDefaultListId(), task);
+        
+        // Verify no due date
+        result = tasksService.refresh(initialResult.getDefaultListId());
+        task = getTaskWithIdFromResult(result, expectedTaskId);
+        assertNull(task.getDueDate());
+
         // Finally, delete the task
         tasksService.deleteObject(expectedTaskId);
 
         // Refresh and verify that the task is gone
         result = tasksService.refresh(initialResult.getDefaultListId());
         assertHasTaskWithId(result, expectedTaskId, false);
+    }
+
+    private Task getTaskWithIdFromResult(ServiceResult result, String id) {
+        Task task = null;
+        for(int i = 0; i < result.getTaskCount(); i++) {
+            task = result.getTask(i);
+            if(task.getId().equals(id)) {
+                break;
+            }
+        }
+        return task;
     }
     
     private void assertHasTaskList(final TaskListsResult result, String expectedTaskList, boolean expected) {

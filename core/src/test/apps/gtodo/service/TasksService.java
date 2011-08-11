@@ -145,6 +145,19 @@ public class TasksService {
             throw new IllegalStateException("Not possible");
         }
     }
+    
+    public ServiceResult updateTask(String listId, Task task) throws IOException {
+        try {
+            JSONObject request = new JSONObject()
+                .put("action_type", "update")
+                .put("action_id", actionId++)
+                .put("id", task.getId())
+                .put("entity_delta", task.entityDelta);
+            return new ServiceResult(executeRequest(listId, request));
+        } catch (JSONException e) {
+            throw new IllegalStateException("Not possible");
+        }
+    }
 
     private JSONObject executeRequest(String currentListId, JSONObject... requests) throws IOException {
         HttpPost serviceRequest = new HttpPost(SERVICE_URL);
