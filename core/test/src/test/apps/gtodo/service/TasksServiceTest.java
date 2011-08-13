@@ -46,7 +46,7 @@ public class TasksServiceTest {
     private TasksService createService() {
         return new TasksService(new DefaultHttpClient(), authToken);
     }
-
+    
     @Test
     public void testInitialConnection() throws IOException {
         InitialConnectionResult result = tasksService.connect();
@@ -293,6 +293,57 @@ public class TasksServiceTest {
         // Remove the new tasks
         tasksService.deleteObject(list1Id);
         tasksService.deleteObject(list2Id);
+    }
+    
+    @Test
+    public void testConcurrentTaskSourceListModification() throws IOException {
+        TasksService service1 = createService();
+        TasksService service2 = createService();
+        
+        InitialConnectionResult initialResult = service1.connect();
+        service2.connect();
+        
+        String targetList1Name = "Test List " + System.currentTimeMillis();
+        String targetList2Name = "Test List " + (System.currentTimeMillis() + 1);
+        
+        ServiceResult result;
+        
+        // Create Task List #1 on Service Connection #1
+        result = service1.addTaskList(initialResult.getDefaultListId(), targetList1Name, 0);
+        String targetList1Id = result.getResult(0).getNewId();
+        
+        // Create Task List #2 on Service Connection #2
+        result = service2.addTaskList(initialResult.getDefaultListId(), targetList2Name, 0);
+        String targetList2Id = result.getResult(0).getNewId();
+        
+        // Create Task on Service Connection #1 in default list
+        result = service1.addTask(initialResult.getDefaultListId(), "Foo", 0, null);
+        String taskId = result.getResult(0).getNewId();
+        
+        // Verify existence of Task on Service Connection #1 in Default List
+        result = service1.refresh(initialResult.getDefaultListId());
+        assertHasTaskWithId(result, taskId, true);
+
+        // Verify existence of Task on Service Connection #2 in Default List
+        result = service2.refresh(initialResult.getDefaultListId());
+        assertHasTaskWithId(result, taskId, true);
+        
+        // Move Task on Service Connection #1 from Default List to Task List #1
+        result = service1.moveTask(taskId, initialResult.getDefaultListId(), targetList1Id);
+        // Verify existence of Task on Service Connection #1 in Task List #1
+        result = service1.refresh(targetList1Id);
+        assertHasTaskWithId(result, taskId, true);
+        
+        // Move Task on Service Connection #2 to from Default List (don't know about first move) to Task List #2
+        result = service2.moveTask(taskId, initialResult.getDefaultListId(), targetList2Id);
+        // Verify existence of Task on Service Connection #1 in Task List #2
+        result = service2.refresh(targetList2Id);
+        assertHasTaskWithId(result, taskId, true);
+
+        // Remove the task and lists
+        tasksService.deleteObject(taskId);
+        tasksService.deleteObject(targetList1Id);
+        tasksService.deleteObject(targetList2Id);
     }
     
     // TODO: Test deleting lists
