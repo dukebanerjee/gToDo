@@ -9,6 +9,10 @@ public class ServiceResult implements TaskListsResult, TasksResult {
     public ServiceResult(JSONObject response) {
         this.response = response;
     }
+    
+    public boolean hasTaskLists() {
+        return response.has("lists");
+    }
 
     public int getTaskListCount() {
         try {
@@ -24,6 +28,10 @@ public class ServiceResult implements TaskListsResult, TasksResult {
         } catch (JSONException e) {
             throw new UnexpectedResponseException(e);
         }
+    }
+    
+    public boolean hasTasks() {
+        return response.has("tasks");
     }
 
     public int getTaskCount() {

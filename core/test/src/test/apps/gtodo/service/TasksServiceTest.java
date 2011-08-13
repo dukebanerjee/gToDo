@@ -40,7 +40,11 @@ public class TasksServiceTest {
 
     @Before
     public void setup() throws IOException {
-        tasksService = new TasksService(new DefaultHttpClient(), authToken);
+        tasksService = createService();
+    }
+
+    private TasksService createService() {
+        return new TasksService(new DefaultHttpClient(), authToken);
     }
 
     @Test
@@ -77,7 +81,7 @@ public class TasksServiceTest {
         ServiceResult result;
 
         // Add the task list and verify that we got a new id
-        result = tasksService.addTaskList(taskList, initialResult.getTaskListCount());
+        result = tasksService.addTaskList(initialResult.getDefaultListId(), taskList, initialResult.getTaskListCount());
         assertEquals(1, result.getResultCount());
         assertTrue(result.getResult(0).isNewEntity());
         assertTrue(result.getResult(0).getNewId().length() > 0);
@@ -90,7 +94,7 @@ public class TasksServiceTest {
         // Rename the list
         String renamedTaskList = "Test List " + System.currentTimeMillis();
         assertNotSame(taskList, renamedTaskList);
-        tasksService.renameTaskList(expectedTaskId, renamedTaskList);
+        tasksService.renameTaskList(initialResult.getDefaultListId(), expectedTaskId, renamedTaskList);
 
         // Refresh and verify that the old name is out and the new name is in
         result = tasksService.refresh(initialResult.getDefaultListId());
@@ -182,7 +186,7 @@ public class TasksServiceTest {
 
         // Create new task list to move the new task to
         String taskList = "Test List " + System.currentTimeMillis();
-        result = tasksService.addTaskList(taskList, initialResult.getTaskListCount());
+        result = tasksService.addTaskList(initialResult.getDefaultListId(), taskList, initialResult.getTaskListCount());
         String taskListId = result.getResult(0).getNewId();
 
         // Move the task
@@ -200,7 +204,110 @@ public class TasksServiceTest {
         tasksService.deleteObject(taskId);
         tasksService.deleteObject(taskListId);
     }
+    
+    @Test
+    public void testConcurrentTaskModification() throws IOException {
+        TasksService service1 = createService();
+        TasksService service2 = createService();
+        
+        InitialConnectionResult initialResult = service1.connect();
+        service2.connect();
+        
+        String task1Name = "Test Task " + System.currentTimeMillis();
+        String task2Name = "Test Task " + (System.currentTimeMillis() + 1);
+        
+        ServiceResult result;
+        
+        // Create Task #1 on Service Connection #1
+        result = service1.addTask(initialResult.getDefaultListId(), task1Name, 0, null);
+        assertFalse(result.hasTasks());
+        String task1Id = result.getResult(0).getNewId();
+        
+        // Create Task #2 on Service Connection #2
+        result = service2.addTask(initialResult.getDefaultListId(), task2Name, 0, null);
+        // Verify that Service Connection #2 is notified about creation of Task #1
+        assertTrue(result.hasTasks());
+        assertHasTaskWithId(result, task1Id, true);
+        String task2Id = result.getResult(0).getNewId();
+        
+        // Update Task #1 on Service Connection #1
+        TaskRequest taskRequest = new TaskRequest();
+        taskRequest.setNotes("ABC");
+        result = service1.updateTask(initialResult.getDefaultListId(), task1Id, taskRequest);
+        // Verify that Service Connection #1 is notified about creation of Task #2
+        assertTrue(result.hasTasks());
+        assertHasTaskWithId(result, task2Id, true);
 
+        // Update Task #2 on Service Connection #2
+        taskRequest = new TaskRequest();
+        taskRequest.setCompleted(true);
+        result = service2.updateTask(initialResult.getDefaultListId(), task2Id, taskRequest);
+        // Verify that Service Connection #2 is notified about update to Task #1
+        assertTrue(result.hasTasks());
+        assertHasTaskWithId(result, task1Id, true);
+        assertEquals("ABC", getTaskWithIdFromResult(result, task1Id).getNotes());
+        
+        // Remove the new tasks
+        tasksService.deleteObject(task1Id);
+        tasksService.deleteObject(task2Id);
+    }
+
+    @Test
+    public void testConcurrentTaskListModification() throws IOException {
+        TasksService service1 = createService();
+        TasksService service2 = createService();
+        
+        InitialConnectionResult initialResult = service1.connect();
+        service2.connect();
+        
+        String list1Name = "Test List " + System.currentTimeMillis();
+        String list2Name = "Test List " + (System.currentTimeMillis() + 1);
+        
+        ServiceResult result;
+        
+        // Create Task List #1 on Service Connection #1
+        result = service1.addTaskList(initialResult.getDefaultListId(), list1Name, 0);
+        assertFalse(result.hasTaskLists());
+        String list1Id = result.getResult(0).getNewId();
+        
+        // Create Task List #2 on Service Connection #2
+        result = service2.addTaskList(initialResult.getDefaultListId(), list2Name, 0);
+        // Verify that Service Connection #2 is notified about creation of Task List #1
+        assertTrue(result.hasTaskLists());
+        assertHasTaskListWithId(result, list1Id, true);
+        String list2Id = result.getResult(0).getNewId();
+        
+        // Rename Task List #1 on Service Connection #1
+        result = service1.renameTaskList(initialResult.getDefaultListId(), list1Id, list1Name + " Changed");
+        // Verify that Service Connection #1 is notified about creation of Task List #2
+        assertTrue(result.hasTaskLists());
+        assertHasTaskListWithId(result, list2Id, true);
+
+        // Rename Task List #2 on Service Connection #2
+        result = service2.renameTaskList(initialResult.getDefaultListId(), list2Id, list2Name + " Changed");
+        // Verify that Service Connection #2 is notified about Task List #1 being renamed
+        assertTrue(result.hasTaskLists());
+        assertHasTaskListWithId(result, list1Id, true);
+        assertEquals(list1Name + " Changed", getTaskListWithIdFromResult(result, list1Id).getName());
+        
+        // Remove the new tasks
+        tasksService.deleteObject(list1Id);
+        tasksService.deleteObject(list2Id);
+    }
+    
+    // TODO: Test deleting lists
+    
+    private TaskList getTaskListWithIdFromResult(ServiceResult result, String id) {
+        TaskList list = null;
+        for(int i = 0; i < result.getTaskListCount(); i++) {
+            list = result.getTaskList(i);
+            if(list.getId().equals(id)) {
+                break;
+            }
+        }
+        return list;
+    }
+    
     private TaskResult getTaskWithIdFromResult(ServiceResult result, String id) {
         TaskResult task = null;
         for(int i = 0; i < result.getTaskCount(); i++) {

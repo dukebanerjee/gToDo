@@ -19,6 +19,8 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+// TODO: Capture current list Id somewhere
+
 public class TasksService {
     public static final String INITIAL_SERVICE_URL = "https://mail.google.com/tasks/ig";
     private static final String SERVICE_URL = "https://mail.google.com/tasks/r/ig";
@@ -83,7 +85,7 @@ public class TasksService {
         }
     }
 
-    public ServiceResult addTaskList(String taskList, int index) throws IOException {
+    public ServiceResult addTaskList(String currentListId, String taskList, int index) throws IOException {
         try {
             JSONObject request = new JSONObject()
                 .put("action_type", "create")
@@ -92,13 +94,13 @@ public class TasksService {
                 .put("entity_delta", new JSONObject()
                 .put("name", taskList)
                 .put("entity_type", "GROUP"));
-            return new ServiceResult(executeRequest(null, request));
+            return new ServiceResult(executeRequest(currentListId, request));
         } catch (JSONException e) {
             throw new IllegalStateException("Not possible");
         }
     }
 
-    public ServiceResult renameTaskList(String id, String name) throws IOException {
+    public ServiceResult renameTaskList(String currentListId, String id, String name) throws IOException {
         try {
             JSONObject request = new JSONObject()
                 .put("action_type", "update")
@@ -106,7 +108,7 @@ public class TasksService {
                 .put("id", id)
                 .put("entity_delta", new JSONObject()
                     .put("name", name));
-            return new ServiceResult(executeRequest(null, request));
+            return new ServiceResult(executeRequest(currentListId, request));
         } catch (JSONException e) {
             throw new IllegalStateException("Not possible");
         }
@@ -126,7 +128,7 @@ public class TasksService {
         }
     }
     
-    public ServiceResult addTask(String listId, String taskName, int index, String priorSiblingId) throws IOException {
+    public ServiceResult addTask(String currentListId, String taskName, int index, String priorSiblingId) throws IOException {
         try {
             JSONObject request = new JSONObject()
                 .put("action_type", "create")
@@ -135,24 +137,24 @@ public class TasksService {
                 .put("entity_delta", new JSONObject()
                     .put("name", taskName)
                     .put("entity_type", "TASK"))
-                .put("parent_id", listId)
+                .put("parent_id", currentListId)
                 .put("dest_parent_type", "GROUP")
-                .put("list_id", listId)
+                .put("list_id", currentListId)
                 .put("prior_sibling_id", priorSiblingId);
-            return new ServiceResult(executeRequest(listId, request));
+            return new ServiceResult(executeRequest(currentListId, request));
         } catch (JSONException e) {
             throw new IllegalStateException("Not possible");
         }
     }
     
-    public ServiceResult updateTask(String listId, String taskId, TaskRequest task) throws IOException {
+    public ServiceResult updateTask(String currentListId, String taskId, TaskRequest task) throws IOException {
         try {
             JSONObject request = new JSONObject()
                 .put("action_type", "update")
                 .put("action_id", actionId++)
                 .put("id", taskId)
                 .put("entity_delta", task.entityDelta);
-            return new ServiceResult(executeRequest(listId, request));
+            return new ServiceResult(executeRequest(currentListId, request));
         } catch (JSONException e) {
             throw new IllegalStateException("Not possible");
         }
@@ -191,7 +193,11 @@ public class TasksService {
             serviceRequest.setEntity(new UrlEncodedFormEntity(Arrays.asList(
                     new BasicNameValuePair("r", jsonRequest.toString()))));
             HttpResponse httpResponse = client.execute(serviceRequest, context);
-            return new JSONObject(HttpClientUtils.readEntityAsString(httpResponse.getEntity()));
+            JSONObject response = new JSONObject(HttpClientUtils.readEntityAsString(httpResponse.getEntity()));
+            if(response.has("latest_sync_point")) {
+                latestSyncPoint = response.getLong("latest_sync_point");
+            }
+            return response;
         } catch (JSONException e) {
             throw new IOException("Unexpected response from service");
         }
