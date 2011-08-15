@@ -50,17 +50,17 @@ public class ServiceResult implements TaskListsResult, TasksResult {
         }
     }
 
-    public int getResultCount() {
+    public boolean hasResult() {
         try {
-            return response.getJSONArray("results").length();
+            return response.has("results") && response.getJSONArray("results").length() > 0;
         } catch (JSONException e) {
             throw new UnexpectedResponseException(e);
         }
     }
 
-    public RequestResult getResult(int i) {
+    public RequestResult getResult() {
         try {
-            JSONObject result = response.getJSONArray("results").getJSONObject(i);
+            JSONObject result = response.getJSONArray("results").getJSONObject(0);
             return new RequestResult(result);
         } catch (JSONException e) {
             throw new UnexpectedResponseException(e);

@@ -25,4 +25,28 @@ public class RequestResult {
             throw new UnexpectedResponseException(e);
         }
     }
+
+    public boolean isError() {
+        try {
+            return "error".equals(result.getString("result_type"));
+        } catch (JSONException e) {
+            throw new UnexpectedResponseException(e);
+        }
+    }
+    
+    public boolean isRetryable() {
+        try {
+            return result.getBoolean("retryable");
+        } catch (JSONException e) {
+            throw new UnexpectedResponseException(e);
+        }
+    }
+
+    public int getErrorCode() {
+        try {
+            return result.getInt("error_code");
+        } catch (JSONException e) {
+            throw new UnexpectedResponseException(e);
+        }
+    }
 }
