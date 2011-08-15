@@ -181,10 +181,16 @@ public class TasksService {
 
     private ServiceResult executeRequest(JSONObject request) throws IOException, ServiceException {
         HttpPost serviceRequest = new HttpPost(SERVICE_URL);
-        JSONObject jsonRequest = null;
+        serviceRequest.addHeader("AT", "1");
+        serviceRequest.setEntity(new UrlEncodedFormEntity(Arrays.asList(
+                new BasicNameValuePair("r", createServiceRequest(request).toString()))));
+        HttpResponse httpResponse = client.execute(serviceRequest, context);
+        return createServiceResponse(httpResponse);
+    }
+
+    private JSONObject createServiceRequest(JSONObject request) {
         try {
-            serviceRequest.addHeader("AT", "1");
-            jsonRequest = new JSONObject()
+            return new JSONObject()
                 .put("action_list", new JSONArray(Arrays.asList(request)))
                 .put("client_version", clientVersion)
                 .put("latest_sync_point", latestSyncPoint)
@@ -192,11 +198,11 @@ public class TasksService {
         } catch (JSONException e) {
             throw new IllegalStateException("Not possible");
         }
+    }
 
+
+    private ServiceResult createServiceResponse(HttpResponse httpResponse) throws IOException, ServiceException {
         try {
-            serviceRequest.setEntity(new UrlEncodedFormEntity(Arrays.asList(
-                    new BasicNameValuePair("r", jsonRequest.toString()))));
-            HttpResponse httpResponse = client.execute(serviceRequest, context);
             JSONObject response = new JSONObject(HttpClientUtils.readEntityAsString(httpResponse.getEntity()));
             if(response.has("latest_sync_point")) {
                 latestSyncPoint = response.getLong("latest_sync_point");
