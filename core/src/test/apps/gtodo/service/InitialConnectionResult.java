@@ -34,9 +34,9 @@ public class InitialConnectionResult implements TaskListsResult, TasksResult {
         }
     }
 
-    public TaskList getTaskList(int i) {
+    public TaskListResult getTaskList(int i) {
         try {
-            return new TaskList(response.getJSONObject("t").getJSONArray("lists").getJSONObject(i));
+            return new TaskListResult(response.getJSONObject("t").getJSONArray("lists").getJSONObject(i));
         } catch (JSONException e) {
             throw new UnexpectedResponseException(e);
         }

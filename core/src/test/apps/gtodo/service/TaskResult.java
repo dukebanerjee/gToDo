@@ -53,4 +53,12 @@ public class TaskResult {
             throw new UnexpectedResponseException(e);
         }
     }
+    
+    public long getLastModified() {
+        try {
+            return result.getLong("last_modified");
+        } catch (JSONException e) {
+            throw new UnexpectedResponseException(e);
+        }
+    }
 }

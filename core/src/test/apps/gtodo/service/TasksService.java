@@ -208,8 +208,8 @@ public class TasksService {
                 latestSyncPoint = response.getLong("latest_sync_point");
             }
             ServiceResult serviceResult = new ServiceResult(response);
-            if(serviceResult.hasResult() && serviceResult.getResult().isError()) {
-                throw new ServiceException(serviceResult.getResult());
+            if(serviceResult.hasResult() && serviceResult.getRequestResult().isError()) {
+                throw new ServiceException(serviceResult);
             }
             return serviceResult;
         } catch (JSONException e) {

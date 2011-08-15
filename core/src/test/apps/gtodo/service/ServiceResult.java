@@ -22,9 +22,9 @@ public class ServiceResult implements TaskListsResult, TasksResult {
         }
     }
 
-    public TaskList getTaskList(int i) {
+    public TaskListResult getTaskList(int i) {
         try {
-            return new TaskList(response.getJSONArray("lists").getJSONObject(i));
+            return new TaskListResult(response.getJSONArray("lists").getJSONObject(i));
         } catch (JSONException e) {
             throw new UnexpectedResponseException(e);
         }
@@ -58,7 +58,7 @@ public class ServiceResult implements TaskListsResult, TasksResult {
         }
     }
 
-    public RequestResult getResult() {
+    public RequestResult getRequestResult() {
         try {
             JSONObject result = response.getJSONArray("results").getJSONObject(0);
             return new RequestResult(result);
