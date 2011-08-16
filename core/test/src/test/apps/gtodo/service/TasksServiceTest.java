@@ -423,12 +423,10 @@ public class TasksServiceTest {
         taskRequest.setNotes("ABC");
         result = service2.updateTask(taskId, taskRequest);
         // The update succeeds, but the task is gone!
-        // THIS ONE IS NOT LIKE THE OTHERS!!
+        // NOTE: THIS ONE IS NOT LIKE THE OTHERS!!
         assertHasTaskWithId(result, taskId, false);
     }
     
-    // TODO: Test various ways modification time can change
-
     @Test
     public void testConcurrentDeleteOfListContainingTaskBeingEdited() throws IOException, ServiceException {
         TasksService service1 = createService();
@@ -467,7 +465,108 @@ public class TasksServiceTest {
             assertHasTaskListWithId(ex, listId, false);
         }
     }
+    
+    @Test
+    public void testTaskListUpdatedTime() throws IOException, ServiceException {
+        tasksService.connect();
+        
+        ServiceResult result;
 
+        // Create a Task List 
+        String listName = "Test List " + System.currentTimeMillis();
+        result = tasksService.addTaskList(listName, 0);
+        String listId = result.getRequestResult().getNewId();
+        result = tasksService.refresh();
+        TaskListResult taskList = getTaskListWithIdFromResult(result, listId);
+        // Verify creation time
+        long creationTime = taskList.getLastModified();
+        assertTrue(creationTime > 0);
+        
+        // Rename the Task List 
+        result = tasksService.renameTaskList(listId, listName + " Updated");
+        result = tasksService.refresh();
+        taskList = getTaskListWithIdFromResult(result, listId);
+        // Verify that the modification time has advanced
+        long modifiedTime1 = taskList.getLastModified();
+        assertTrue(modifiedTime1 > creationTime);
+        
+        // Add a Task
+        String taskName = "Test Task " + System.currentTimeMillis();
+        tasksService.setCurrentListId(listId);
+        result = tasksService.addTask(taskName, 0, null);
+        String taskId = result.getRequestResult().getNewId();
+        result = tasksService.refresh();
+        taskList = getTaskListWithIdFromResult(result, listId);
+        // Verify that the modification time has advanced
+        long modifiedTime2 = taskList.getLastModified();
+        assertTrue(modifiedTime2 > modifiedTime1);
+        
+        // Rename the Task
+        TaskRequest taskRequest = new TaskRequest();
+        taskRequest.setName(taskName + " Updated");
+        tasksService.updateTask(taskId, taskRequest);
+        result = tasksService.refresh();
+        taskList = getTaskListWithIdFromResult(result, listId);
+        // Verify that the modification time HAS NOT CHANGED!
+        long modifiedTime3 = taskList.getLastModified();
+        assertEquals(modifiedTime2, modifiedTime3);
+        
+        // Delete the Task
+        tasksService.deleteObject(taskId);
+        result = tasksService.refresh();
+        taskList = getTaskListWithIdFromResult(result, listId);
+        // Verify that the modification time HAS NOT CHANGED!
+        // Why? Possibly because "deleting" a task is just setting the "deleted" attribute to true,
+        // so deleting the task is pretty much the same as renaming it, which apparently does not change the
+        // containing list's modification time.
+        long modifiedTime4 = taskList.getLastModified();
+        assertEquals(modifiedTime3, modifiedTime4);
+        
+        tasksService.deleteObject(listId);
+    }
+
+    @Test
+    public void testTaskUpdatedTime() throws IOException, ServiceException {
+        tasksService.connect();
+        
+        ServiceResult result;
+
+        // Create a Task 
+        String taskName = "Test Task " + System.currentTimeMillis();
+        result = tasksService.addTask(taskName, 0, null);
+        String taskId = result.getRequestResult().getNewId();
+        result = tasksService.refresh();
+        TaskResult task = getTaskWithIdFromResult(result, taskId);
+        // Verify creation time
+        long creationTime = task.getLastModified();
+        assertTrue(creationTime > 0);
+        
+        // Rename the Task 
+        TaskRequest taskRequest = new TaskRequest();
+        taskRequest.setName(taskName + " Updated");
+        result = tasksService.updateTask(taskId, taskRequest);
+        result = tasksService.refresh();
+        task = getTaskWithIdFromResult(result, taskId);
+        // Verify that the modification time has advanced
+        long modifiedTime1 = task.getLastModified();
+        assertTrue(modifiedTime1 > creationTime);
+        
+        // Move the Task
+        String listName = "Test Task " + System.currentTimeMillis();
+        result = tasksService.addTaskList(listName, 0);
+        String listId = result.getRequestResult().getNewId();
+        tasksService.moveTask(taskId, listId);
+        tasksService.setCurrentListId(listId);
+        result = tasksService.refresh();
+        task = getTaskWithIdFromResult(result, listId);
+        // Verify that the modification time has advanced
+        long modifiedTime2 = task.getLastModified();
+        assertTrue(modifiedTime2 > modifiedTime1);
+        
+        tasksService.deleteObject(taskId);
+        tasksService.deleteObject(listId);
+    }
+    
     private TaskListResult getTaskListWithIdFromResult(ServiceResult result, String id) {
         TaskListResult list = null;
         for(int i = 0; i < result.getTaskListCount(); i++) {
