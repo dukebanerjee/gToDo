@@ -20,8 +20,11 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 public class TasksService {
+    public static final int HTTP_STATUS_CODE_OK = 200;
+    public static final int HTTP_STATUS_CODE_FORBIDDEN = 403;
+    
     public static final String INITIAL_SERVICE_URL = "https://mail.google.com/tasks/ig";
-    private static final String SERVICE_URL = "https://mail.google.com/tasks/r/ig";
+    public static final String SERVICE_URL = "https://mail.google.com/tasks/r/ig";
 
     private final HttpClient client;
     private BasicHttpContext context;
@@ -51,10 +54,7 @@ public class TasksService {
 
     public InitialConnectionResult connect() throws IOException {
         HttpResponse response = client.execute(new HttpGet(INITIAL_SERVICE_URL), context);
-        if (response.getStatusLine().getStatusCode() != 200) {
-            throw new IOException("Unexpected HTTP response code from service: "
-                    + response.getStatusLine().getStatusCode());
-        }
+        validateHttpResponse(response);
 
         String responseContent = HttpClientUtils.readEntityAsString(response.getEntity());
         Matcher m = Pattern.compile("_setup\\((.*)\\)").matcher(responseContent);
@@ -70,6 +70,16 @@ public class TasksService {
             }
         }
         throw new IOException("Unexpected response from service: " + responseContent);
+    }
+
+    private void validateHttpResponse(HttpResponse response) throws IOException {
+        int statusCode = response.getStatusLine().getStatusCode();
+        if (statusCode == HTTP_STATUS_CODE_FORBIDDEN) {
+            throw new UnauthorizedException();
+        }
+        else if (statusCode != HTTP_STATUS_CODE_OK) {
+            throw new IOException("Unexpected HTTP response code from service: " + statusCode);
+        }
     }
     
     public void setCurrentListId(String listId) {
@@ -184,8 +194,9 @@ public class TasksService {
         serviceRequest.addHeader("AT", "1");
         serviceRequest.setEntity(new UrlEncodedFormEntity(Arrays.asList(
                 new BasicNameValuePair("r", createServiceRequest(request).toString()))));
-        HttpResponse httpResponse = client.execute(serviceRequest, context);
-        return createServiceResponse(httpResponse);
+        HttpResponse response = client.execute(serviceRequest, context);
+        validateHttpResponse(response);
+        return createServiceResponse(response);
     }
 
     private JSONObject createServiceRequest(JSONObject request) {
